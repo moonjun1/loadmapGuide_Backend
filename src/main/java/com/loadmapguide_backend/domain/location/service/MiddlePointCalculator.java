@@ -236,26 +236,77 @@ public class MiddlePointCalculator {
     }
     
     /**
-     * 상업지역 점수 계산 (간단한 휴리스틱)
+     * 상업지역 점수 계산 (개선된 휴리스틱)
      */
     private double calculateCommercialScore(LocationPoint location) {
-        // 실제로는 상권 데이터를 조회해야 하지만, 여기서는 간단한 점수화
-        // 위도/경도 기반으로 주요 상권 지역에 높은 점수 부여
-        
-        // 서울 주요 상권들의 대략적 좌표
-        Map<String, LocationPoint> majorAreas = Map.of(
-            "강남", LocationPoint.builder().latitude(37.4979).longitude(127.0276).build(),
-            "홍대", LocationPoint.builder().latitude(37.5563).longitude(126.9236).build(),
-            "명동", LocationPoint.builder().latitude(37.5636).longitude(126.9834).build()
+        // 서울 주요 상권들의 좌표와 가중치
+        Map<String, CommercialArea> majorAreas = Map.of(
+            "강남역", new CommercialArea(37.4979, 127.0276, 100), // 최고 상업지역
+            "홍대입구", new CommercialArea(37.5563, 126.9236, 95),
+            "명동", new CommercialArea(37.5636, 126.9834, 90),
+            "신촌", new CommercialArea(37.5559, 126.9364, 85),
+            "건대입구", new CommercialArea(37.5403, 127.0695, 80),
+            "이태원", new CommercialArea(37.5339, 126.9947, 75),
+            "종로3가", new CommercialArea(37.5703, 126.9910, 70),
+            "신림", new CommercialArea(37.4842, 126.9292, 65),
+            "잠실", new CommercialArea(37.5133, 127.1028, 75),
+            "구로디지털단지", new CommercialArea(37.4851, 126.8977, 60)
         );
         
-        return majorAreas.values().stream()
-                .mapToDouble(area -> {
-                    double distance = calculateDistance(location, area);
-                    return Math.max(0, 100 - distance / 100); // 10km 이내에서 점수 부여
+        // 각 상권과의 거리 기반 점수 계산
+        double maxScore = majorAreas.entrySet().stream()
+                .mapToDouble(entry -> {
+                    CommercialArea area = entry.getValue();
+                    LocationPoint areaPoint = LocationPoint.builder()
+                            .latitude(area.latitude)
+                            .longitude(area.longitude)
+                            .build();
+                    
+                    double distance = calculateDistance(location, areaPoint);
+                    
+                    // 거리별 점수 감소 (1km 이내 최대 점수, 5km 이후 최소 점수)
+                    double distanceScore = Math.max(0, 1 - (distance / 5000)); // 5km에서 0점
+                    return area.weight * distanceScore;
                 })
                 .max()
-                .orElse(20.0); // 기본 점수
+                .orElse(0.0);
+        
+        // 기본 점수 추가 (어느 지역이든 최소한의 편의시설은 있다고 가정)
+        return Math.max(maxScore, 20.0) + getRegionBonus(location);
+    }
+    
+    /**
+     * 지역별 보너스 점수 (지하철역 접근성, 인구밀도 등을 고려한 추가 점수)
+     */
+    private double getRegionBonus(LocationPoint location) {
+        // 서울 중심부 (한강 이북, 주요 구) 보너스
+        if (location.getLatitude() > 37.52 && location.getLatitude() < 37.60) {
+            if (location.getLongitude() > 126.95 && location.getLongitude() < 127.05) {
+                return 10.0; // 중심부 보너스
+            }
+        }
+        
+        // 강남 지역 보너스
+        if (location.getLatitude() > 37.47 && location.getLatitude() < 37.52) {
+            if (location.getLongitude() > 127.02 && location.getLongitude() < 127.13) {
+                return 15.0; // 강남 지역 보너스
+            }
+        }
+        
+        return 0.0;
+    }
+    
+    // 상업지역 정보를 담는 내부 클래스
+    private static class CommercialArea {
+        final double latitude;
+        final double longitude; 
+        final double weight; // 상업지역 가중치 (0-100)
+        
+        CommercialArea(double latitude, double longitude, double weight) {
+            this.latitude = latitude;
+            this.longitude = longitude;
+            this.weight = weight;
+        }
     }
     
     /**

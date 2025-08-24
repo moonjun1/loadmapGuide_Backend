@@ -1,0 +1,47 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password: 
+    driver-class-name: org.h2.Driver
+    
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    defer-datasource-initialization: true
+    
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      
+  cache:
+    type: simple
+      
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 
+      database: 0
+      
+  sql:
+    init:
+      mode: always
+  flyway:
+    enabled: false
+      
+# 외부 API 설정 (개발용 - 실제 키는 환경변수로 관리)
+external-api:
+  kakao:
+    rest-api-key: ${KAKAO_REST_API_KEY:your-kakao-api-key}
+    base-url: https://dapi.kakao.com
+  weather:
+    api-key: ${WEATHER_API_KEY:your-weather-api-key}
+    base-url: https://api.openweathermap.org/data/2.5
+    
+logging:
+  level:
+    com.loadmapguide_backend: DEBUG
+    root: INFO

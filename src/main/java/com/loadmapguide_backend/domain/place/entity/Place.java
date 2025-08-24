@@ -91,6 +91,28 @@ public class Place extends BaseEntity {
         this.businessHours = businessHours;
     }
     
+    /**
+     * 실시간 정보 업데이트 (카카오 API에서 가져온 최신 정보로 업데이트)
+     */
+    public void updateRealTimeInfo(String name, String phone, Double rating, 
+                                  BusinessHours businessHours, PlaceAdditionalInfo additionalInfo) {
+        if (name != null && !name.trim().isEmpty()) {
+            this.name = name;
+        }
+        if (phone != null && !phone.trim().isEmpty()) {
+            this.phone = phone;
+        }
+        if (rating != null && rating > 0) {
+            this.rating = rating;
+        }
+        if (businessHours != null) {
+            this.businessHours = businessHours;
+        }
+        if (additionalInfo != null) {
+            this.additionalInfo = additionalInfo;
+        }
+    }
+    
     public double calculateDistance(Double targetLat, Double targetLng) {
         if (this.latitude == null || this.longitude == null) {
             return Double.MAX_VALUE;

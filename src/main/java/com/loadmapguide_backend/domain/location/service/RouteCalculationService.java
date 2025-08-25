@@ -100,6 +100,8 @@ public class RouteCalculationService {
         return switch (transportationType) {
             case PUBLIC_TRANSPORT -> calculatePublicTransportRoute(distanceMeters);
             case CAR -> calculateCarRoute(distanceMeters);
+            case SUBWAY -> calculateSubwayRoute(distanceMeters);
+            case BUS -> calculateBusRoute(distanceMeters);
             case WALK -> calculateWalkRoute(distanceMeters);
         };
     }
@@ -148,6 +150,58 @@ public class RouteCalculationService {
                 .travelTimeMinutes(travelTimeMinutes)
                 .transferCount(0)
                 .fare(estimatedCost)
+                .routeSummary(routeSummary)
+                .build();
+    }
+    
+    /**
+     * 지하철 경로 계산
+     */
+    private RouteCalculation calculateSubwayRoute(double distanceMeters) {
+        double distanceKm = distanceMeters / 1000.0;
+        
+        // 지하철 평균 속도: 40km/h (환승시간 포함)
+        int travelTimeMinutes = (int) Math.ceil(distanceKm / 40.0 * 60);
+        
+        // 거리별 환승 횟수 추정 (지하철만)
+        int transferCount = distanceKm < 3 ? 0 : (int) Math.ceil(distanceKm / 15);
+        
+        // 지하철 기본 요금
+        int baseFare = 1540;
+        int fare = baseFare + (transferCount * 100); // 환승시 추가 요금 적음
+        
+        String routeSummary = String.format("지하철 이용 (환승 %d회 예상)", transferCount);
+        
+        return RouteCalculation.builder()
+                .travelTimeMinutes(travelTimeMinutes)
+                .transferCount(transferCount)
+                .fare(fare)
+                .routeSummary(routeSummary)
+                .build();
+    }
+    
+    /**
+     * 버스 경로 계산
+     */
+    private RouteCalculation calculateBusRoute(double distanceMeters) {
+        double distanceKm = distanceMeters / 1000.0;
+        
+        // 버스 평균 속도: 20km/h (정류장 대기시간 포함)
+        int travelTimeMinutes = (int) Math.ceil(distanceKm / 20.0 * 60);
+        
+        // 거리별 환승 횟수 추정 (버스만)
+        int transferCount = distanceKm < 8 ? 0 : (int) Math.ceil(distanceKm / 12);
+        
+        // 버스 기본 요금
+        int baseFare = 1540;
+        int fare = baseFare + (transferCount * 200);
+        
+        String routeSummary = String.format("버스 이용 (환승 %d회 예상)", transferCount);
+        
+        return RouteCalculation.builder()
+                .travelTimeMinutes(travelTimeMinutes)
+                .transferCount(transferCount)
+                .fare(fare)
                 .routeSummary(routeSummary)
                 .build();
     }

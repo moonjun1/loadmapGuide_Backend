@@ -84,7 +84,9 @@ public class RealTimeRouteResponse {
     public String getTransportationIcon() {
         return switch (transportation) {
             case CAR -> "🚗";
-            case PUBLIC_TRANSPORT -> "🚌";
+            case SUBWAY -> "🚇";
+            case BUS -> "🚌";
+            case PUBLIC_TRANSPORT -> "🚊";
             case WALK -> "🚶";
         };
     }

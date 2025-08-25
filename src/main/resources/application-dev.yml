@@ -38,7 +38,7 @@ external-api:
     rest-api-key: ${KAKAO_REST_API_KEY:your-kakao-api-key}
     base-url: https://dapi.kakao.com
   weather:
-    api-key: ${WEATHER_API_KEY:your-weather-api-key}
+    api-key: ec6f9c19d4f806ae62f88631f76e06c7
     base-url: https://api.openweathermap.org/data/2.5
     
 logging:

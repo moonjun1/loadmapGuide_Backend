@@ -6,6 +6,9 @@ import com.loadmapguide_backend.domain.location.entity.LocationPoint;
 import com.loadmapguide_backend.global.common.enums.TransportationType;
 import com.loadmapguide_backend.global.exception.BusinessException;
 import com.loadmapguide_backend.global.exception.ErrorCode;
+// import com.loadmapguide_backend.global.external.openai.OpenAiApiClient;
+// import com.loadmapguide_backend.global.external.openai.dto.CommercialScoreRequest;
+// import com.loadmapguide_backend.global.external.openai.dto.CommercialScoreResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -20,6 +23,8 @@ public class MiddlePointCalculator {
     
     private final LocationCoordinateService coordinateService;
     private final RouteCalculationService routeCalculationService;
+    private final RealTimeTrafficService realTimeTrafficService;
+    // private final OpenAiApiClient openAiApiClient;
     
     /**
      * 최적 중간지점 계산
@@ -175,7 +180,7 @@ public class MiddlePointCalculator {
                     double totalTravelTime = calculateTotalTravelTime(
                             startPoints, candidate.getLocation(), transportationType);
                     
-                    // 상업지역 점수 계산 (간단한 휴리스틱)
+                    // 상업지역 점수 계산 (기존 휴리스틱)
                     double commercialScore = calculateCommercialScore(candidate.getLocation());
                     
                     // 전체 점수 계산
@@ -236,7 +241,47 @@ public class MiddlePointCalculator {
     }
     
     /**
-     * 상업지역 점수 계산 (개선된 휴리스틱)
+     * GPT를 활용한 상업지역 점수 계산 (현재 비활성화)
+     */
+    /*
+    private double calculateCommercialScoreWithGPT(LocationPoint location) {
+        try {
+            // GPT API 요청 생성
+            CommercialScoreRequest gptRequest = CommercialScoreRequest.builder()
+                    .address(location.getAddress())
+                    .latitude(location.getLatitude())
+                    .longitude(location.getLongitude())
+                    .context("중간지점 추천을 위한 상업지역 분석")
+                    .build();
+            
+            // GPT API 호출
+            CommercialScoreResponse gptResponse = openAiApiClient.analyzeCommercialScore(gptRequest);
+            
+            log.debug("GPT 상업지역 분석 결과 - 주소: {}, 점수: {}, 설명: {}", 
+                     location.getAddress(), gptResponse.getScore(), gptResponse.getDescription());
+            
+            // GPT 점수와 기존 휴리스틱 점수를 조합
+            double gptScore = gptResponse.getScore();
+            double heuristicScore = calculateCommercialScore(location);
+            
+            // 가중 평균 (GPT 70%, 휴리스틱 30%)
+            double finalScore = (gptScore * 0.7) + (heuristicScore * 0.3);
+            
+            log.info("상업지역 점수 계산 완료 - GPT: {}, 휴리스틱: {}, 최종: {}", 
+                    gptScore, heuristicScore, finalScore);
+            
+            return finalScore;
+            
+        } catch (Exception e) {
+            log.warn("GPT 상업지역 점수 계산 실패, 기존 방식으로 대체: {}", e.getMessage());
+            // GPT 실패시 기존 휴리스틱 사용
+            return calculateCommercialScore(location);
+        }
+    }
+    */
+
+    /**
+     * 상업지역 점수 계산 (개선된 휴리스틱) - GPT 보완용
      */
     private double calculateCommercialScore(LocationPoint location) {
         // 서울 주요 상권들의 좌표와 가중치

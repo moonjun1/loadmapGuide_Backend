@@ -5,6 +5,7 @@ import com.loadmapguide_backend.domain.place.dto.PlaceSearchRequest;
 import com.loadmapguide_backend.domain.place.entity.Place;
 import com.loadmapguide_backend.domain.place.repository.PlaceRepository;
 import com.loadmapguide_backend.global.common.enums.PlaceCategory;
+import com.loadmapguide_backend.global.common.enums.PlaceTag;
 import com.loadmapguide_backend.global.exception.BusinessException;
 import com.loadmapguide_backend.global.exception.ErrorCode;
 import com.loadmapguide_backend.global.external.kakao.KakaoMapApiClient;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -260,6 +262,176 @@ public class PlaceSearchService {
                 .collect(Collectors.toList());
     }
     
+    /**
+     * 태그 기반 장소 검색
+     */
+    public List<PlaceResponse> searchPlacesByTags(Set<PlaceTag> tags, Double latitude, Double longitude, 
+                                                 Integer radiusMeters, Integer limit) {
+        try {
+            log.info("태그 기반 장소 검색 시작 - 태그: {}, 위치: ({}, {})", tags, latitude, longitude);
+            
+            List<Place> places;
+            
+            if (latitude != null && longitude != null && radiusMeters != null) {
+                // 위치 기반 태그 검색
+                double latRange = radiusMeters / 111000.0;
+                double lngRange = radiusMeters / (111000.0 * Math.cos(Math.toRadians(latitude)));
+                
+                double minLat = latitude - latRange;
+                double maxLat = latitude + latRange;
+                double minLng = longitude - lngRange;
+                double maxLng = longitude + lngRange;
+                
+                places = placeRepository.findByTagsInArea(tags, minLat, maxLat, minLng, maxLng);
+            } else {
+                // 전체 영역에서 태그 검색
+                places = placeRepository.findByTagsIn(tags);
+            }
+            
+            // 거리 계산 및 정렬
+            if (latitude != null && longitude != null) {
+                places = places.stream()
+                        .filter(place -> {
+                            if (radiusMeters != null) {
+                                double distance = place.calculateDistance(latitude, longitude);
+                                return distance <= radiusMeters;
+                            }
+                            return true;
+                        })
+                        .sorted((p1, p2) -> {
+                            double d1 = p1.calculateDistance(latitude, longitude);
+                            double d2 = p2.calculateDistance(latitude, longitude);
+                            return Double.compare(d1, d2);
+                        })
+                        .collect(Collectors.toList());
+            }
+            
+            // 제한 적용
+            if (limit != null) {
+                places = places.stream()
+                        .limit(limit)
+                        .collect(Collectors.toList());
+            }
+            
+            // 응답 변환
+            List<PlaceResponse> responses = places.stream()
+                    .map(place -> {
+                        double distance = latitude != null && longitude != null ? 
+                                place.calculateDistance(latitude, longitude) : 0.0;
+                        return PlaceResponse.from(place, distance);
+                    })
+                    .collect(Collectors.toList());
+            
+            log.info("태그 기반 장소 검색 완료 - {}개 장소 발견", responses.size());
+            return responses;
+            
+        } catch (Exception e) {
+            log.error("태그 기반 장소 검색 중 오류 발생", e);
+            throw new BusinessException(ErrorCode.PLACE_SEARCH_FAILED, e);
+        }
+    }
+    
+    /**
+     * 카테고리와 태그로 복합 검색
+     */
+    public List<PlaceResponse> searchPlacesByCategoryAndTags(PlaceCategory category, Set<PlaceTag> tags,
+                                                           Double latitude, Double longitude, 
+                                                           Integer radiusMeters, Integer limit) {
+        try {
+            log.info("카테고리-태그 복합 검색 시작 - 카테고리: {}, 태그: {}", category, tags);
+            
+            List<Place> places = placeRepository.findByCategoryAndTags(category, tags);
+            
+            // 위치 필터링
+            if (latitude != null && longitude != null && radiusMeters != null) {
+                places = places.stream()
+                        .filter(place -> {
+                            double distance = place.calculateDistance(latitude, longitude);
+                            return distance <= radiusMeters;
+                        })
+                        .sorted((p1, p2) -> {
+                            double d1 = p1.calculateDistance(latitude, longitude);
+                            double d2 = p2.calculateDistance(latitude, longitude);
+                            return Double.compare(d1, d2);
+                        })
+                        .collect(Collectors.toList());
+            }
+            
+            // 제한 적용
+            if (limit != null) {
+                places = places.stream()
+                        .limit(limit)
+                        .collect(Collectors.toList());
+            }
+            
+            // 응답 변환
+            List<PlaceResponse> responses = places.stream()
+                    .map(place -> {
+                        double distance = latitude != null && longitude != null ? 
+                                place.calculateDistance(latitude, longitude) : 0.0;
+                        return PlaceResponse.from(place, distance);
+                    })
+                    .collect(Collectors.toList());
+            
+            log.info("카테고리-태그 복합 검색 완료 - {}개 장소 발견", responses.size());
+            return responses;
+            
+        } catch (Exception e) {
+            log.error("카테고리-태그 복합 검색 중 오류 발생", e);
+            throw new BusinessException(ErrorCode.PLACE_SEARCH_FAILED, e);
+        }
+    }
+    
+    /**
+     * 모든 태그를 포함하는 장소 검색 (AND 조건)
+     */
+    public List<PlaceResponse> searchPlacesByAllTags(Set<PlaceTag> tags, Double latitude, Double longitude,
+                                                   Integer radiusMeters, Integer limit) {
+        try {
+            log.info("전체 태그 포함 검색 시작 - 태그: {}", tags);
+            
+            List<Place> places = placeRepository.findByAllTags(tags, tags.size());
+            
+            // 위치 필터링
+            if (latitude != null && longitude != null && radiusMeters != null) {
+                places = places.stream()
+                        .filter(place -> {
+                            double distance = place.calculateDistance(latitude, longitude);
+                            return distance <= radiusMeters;
+                        })
+                        .sorted((p1, p2) -> {
+                            double d1 = p1.calculateDistance(latitude, longitude);
+                            double d2 = p2.calculateDistance(latitude, longitude);
+                            return Double.compare(d1, d2);
+                        })
+                        .collect(Collectors.toList());
+            }
+            
+            // 제한 적용
+            if (limit != null) {
+                places = places.stream()
+                        .limit(limit)
+                        .collect(Collectors.toList());
+            }
+            
+            // 응답 변환
+            List<PlaceResponse> responses = places.stream()
+                    .map(place -> {
+                        double distance = latitude != null && longitude != null ? 
+                                place.calculateDistance(latitude, longitude) : 0.0;
+                        return PlaceResponse.from(place, distance);
+                    })
+                    .collect(Collectors.toList());
+            
+            log.info("전체 태그 포함 검색 완료 - {}개 장소 발견", responses.size());
+            return responses;
+            
+        } catch (Exception e) {
+            log.error("전체 태그 포함 검색 중 오류 발생", e);
+            throw new BusinessException(ErrorCode.PLACE_SEARCH_FAILED, e);
+        }
+    }
+
     /**
      * 추천 점수 계산 (추후 고도화)
      */

@@ -4,6 +4,7 @@ import com.loadmapguide_backend.global.exception.BusinessException;
 import com.loadmapguide_backend.global.exception.ErrorCode;
 import com.loadmapguide_backend.global.external.kakao.dto.KakaoCoordinateResponse;
 import com.loadmapguide_backend.global.external.kakao.dto.KakaoPlaceResponse;
+import com.loadmapguide_backend.global.external.kakao.dto.KakaoDirectionResponse;
 import com.loadmapguide_backend.global.external.resilience.CircuitBreakerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -226,6 +227,115 @@ public class KakaoMapApiClient {
         }
     }
     
+    /**
+     * 실시간 경로 탐색 (자동차)
+     */
+    @Cacheable(value = "routes", key = "'car:' + #originLng + ':' + #originLat + ':' + #destLng + ':' + #destLat + ':' + #priority")
+    public KakaoDirectionResponse getCarRoute(Double originLng, Double originLat, 
+                                            Double destLng, Double destLat, String priority) {
+        try {
+            log.debug("🚗 카카오 자동차 경로 API 호출: ({}, {}) -> ({}, {})", 
+                    originLat, originLng, destLat, destLng);
+            
+            return kakaoWebClient.get()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/v1/waypoint/directions")
+                            .queryParam("origin", originLng + "," + originLat)
+                            .queryParam("destination", destLng + "," + destLat)
+                            .queryParam("priority", priority != null ? priority : "RECOMMEND") // RECOMMEND, TIME, DISTANCE
+                            .queryParam("car_fuel", "GASOLINE")
+                            .queryParam("car_hipass", "false")
+                            .queryParam("alternatives", "false")
+                            .queryParam("road_details", "true")
+                            .build())
+                    .retrieve()
+                    .bodyToMono(KakaoDirectionResponse.class)
+                    .timeout(Duration.ofSeconds(10))
+                    .retryWhen(Retry.backoff(2, Duration.ofMillis(500)))
+                    .doOnSuccess(response -> {
+                        if (response.isSuccess()) {
+                            log.debug("✅ 자동차 경로 탐색 성공: {}분, {}km", 
+                                    response.getTotalDurationInMinutes(),
+                                    response.getTotalDistance() / 1000.0);
+                        } else {
+                            log.warn("⚠️ 자동차 경로 탐색 실패: {}", 
+                                    response.getFirstRoute() != null ? 
+                                    response.getFirstRoute().getResultMsg() : "Unknown error");
+                        }
+                    })
+                    .doOnError(error -> log.error("❌ 자동차 경로 탐색 실패: ({}, {}) -> ({}, {})", 
+                            originLat, originLng, destLat, destLng, error))
+                    .block();
+                    
+        } catch (Exception e) {
+            log.error("❌ 카카오 자동차 경로 API 호출 중 예외 발생", e);
+            throw new BusinessException(ErrorCode.EXTERNAL_API_ERROR, e);
+        }
+    }
+    
+    /**
+     * 대중교통 경로 탐색 (간단한 직선거리 기반 추정)
+     * 참고: 카카오에서 대중교통 API는 별도 제공하지 않으므로 추정값 사용
+     */
+    public Integer estimatePublicTransportTime(Double originLng, Double originLat, 
+                                             Double destLng, Double destLat) {
+        try {
+            // 직선거리 계산 (하버사인 공식)
+            double distance = calculateDistance(originLat, originLng, destLat, destLng);
+            
+            // 대중교통 평균 속도를 25km/h로 가정 (환승 시간 포함)
+            // 최소 10분, 최대 120분으로 제한
+            int estimatedMinutes = (int) Math.max(10, Math.min(120, (distance / 1000.0) * 2.4));
+            
+            log.debug("🚌 대중교통 예상 시간: {}분 (거리: {}km)", estimatedMinutes, distance / 1000.0);
+            
+            return estimatedMinutes;
+            
+        } catch (Exception e) {
+            log.error("❌ 대중교통 시간 추정 중 오류 발생", e);
+            return 30; // 기본값 30분
+        }
+    }
+    
+    /**
+     * 도보 시간 계산
+     */
+    public Integer calculateWalkingTime(Double originLng, Double originLat, 
+                                      Double destLng, Double destLat) {
+        try {
+            double distance = calculateDistance(originLat, originLng, destLat, destLng);
+            
+            // 평균 도보 속도 4km/h 가정
+            int walkingMinutes = (int) Math.max(5, (distance / 1000.0) * 15);
+            
+            log.debug("🚶 도보 예상 시간: {}분 (거리: {}km)", walkingMinutes, distance / 1000.0);
+            
+            return walkingMinutes;
+            
+        } catch (Exception e) {
+            log.error("❌ 도보 시간 계산 중 오류 발생", e);
+            return 15; // 기본값 15분
+        }
+    }
+    
+    /**
+     * 두 좌표 간 직선거리 계산 (하버사인 공식)
+     */
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        final int R = 6371; // 지구 반지름 (km)
+        
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lonDistance = Math.toRadians(lon2 - lon1);
+        
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lonDistance / 2) * Math.sin(lonDistance / 2);
+                
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        
+        return R * c * 1000; // 미터로 변환
+    }
+
     /**
      * API 응답 유효성 검증
      */

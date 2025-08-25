@@ -1,0 +1,239 @@
+package com.loadmapguide_backend.domain.location.controller;
+
+import com.loadmapguide_backend.domain.location.dto.LocationRequest;
+import com.loadmapguide_backend.domain.location.dto.RealTimeRouteResponse;
+import com.loadmapguide_backend.domain.location.service.RealTimeTrafficService;
+import com.loadmapguide_backend.global.common.enums.TransportationType;
+import com.loadmapguide_backend.global.common.dto.BaseResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@Slf4j
+@RestController
+@RequestMapping("/traffic/realtime")
+@RequiredArgsConstructor
+public class RealTimeTrafficController {
+    
+    private final RealTimeTrafficService realTimeTrafficService;
+    
+    /**
+     * 여러 출발지에서 목적지까지의 실시간 경로 정보 조회
+     */
+    @PostMapping("/routes")
+    public ResponseEntity<BaseResponse<List<RealTimeRouteResponse>>> getRealTimeRoutes(
+            @RequestBody List<LocationRequest> origins,
+            @RequestParam Double destLatitude,
+            @RequestParam Double destLongitude,
+            @RequestParam(defaultValue = "PUBLIC_TRANSPORT") TransportationType transportation) {
+        
+        log.info("🚦 실시간 교통정보 요청 - 목적지: ({}, {}), 교통수단: {}, 출발지: {}개", 
+                destLatitude, destLongitude, transportation, origins.size());
+        
+        try {
+            List<RealTimeRouteResponse> routes = realTimeTrafficService.getRealTimeRoutes(
+                    origins, destLatitude, destLongitude, transportation);
+            
+            return ResponseEntity.ok(
+                BaseResponse.success(
+                    routes,
+                    String.format("%d개 경로의 실시간 교통정보를 조회했습니다.", routes.size())
+                )
+            );
+            
+        } catch (Exception e) {
+            log.error("❌ 실시간 교통정보 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError().body(
+                BaseResponse.error("실시간 교통정보 조회 중 오류가 발생했습니다.")
+            );
+        }
+    }
+    
+    /**
+     * 단일 경로의 실시간 교통정보 조회
+     */
+    @PostMapping("/route")
+    public ResponseEntity<BaseResponse<RealTimeRouteResponse>> getRealTimeRoute(
+            @RequestBody LocationRequest origin,
+            @RequestParam Double destLatitude,
+            @RequestParam Double destLongitude,
+            @RequestParam(defaultValue = "PUBLIC_TRANSPORT") TransportationType transportation) {
+        
+        log.info("🛣️ 단일 경로 실시간 정보 요청 - {} -> ({}, {}), 교통수단: {}", 
+                origin.getAddress(), destLatitude, destLongitude, transportation);
+        
+        try {
+            RealTimeRouteResponse route = realTimeTrafficService.calculateRealTimeRoute(
+                    origin, destLatitude, destLongitude, transportation);
+            
+            return ResponseEntity.ok(
+                BaseResponse.success(
+                    route,
+                    String.format("%s 경로의 실시간 정보입니다.", route.getTransportationIcon())
+                )
+            );
+            
+        } catch (Exception e) {
+            log.error("❌ 단일 경로 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError().body(
+                BaseResponse.error("경로 조회 중 오류가 발생했습니다.")
+            );
+        }
+    }
+    
+    /**
+     * 카카오 길찾기 API로 자동차 경로 조회
+     */
+    @GetMapping("/car-route")
+    public ResponseEntity<BaseResponse<RealTimeRouteResponse>> getCarRoute(
+            @RequestParam Double originLatitude,
+            @RequestParam Double originLongitude,
+            @RequestParam Double destLatitude,
+            @RequestParam Double destLongitude,
+            @RequestParam(required = false) String originAddress) {
+        
+        log.info("🚗 카카오 자동차 경로 API 요청 - ({}, {}) -> ({}, {})", 
+                originLatitude, originLongitude, destLatitude, destLongitude);
+        
+        try {
+            LocationRequest origin = LocationRequest.builder()
+                    .latitude(originLatitude)
+                    .longitude(originLongitude)
+                    .address(originAddress != null ? originAddress : "출발지")
+                    .build();
+                    
+            RealTimeRouteResponse route = realTimeTrafficService.calculateRealTimeRoute(
+                    origin, destLatitude, destLongitude, TransportationType.CAR);
+            
+            return ResponseEntity.ok(
+                BaseResponse.success(
+                    route,
+                    String.format("실시간 자동차 경로: %s, 교통상황: %s", 
+                            route.getFormattedDuration(), route.getTrafficState())
+                )
+            );
+            
+        } catch (Exception e) {
+            log.error("❌ 자동차 경로 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError().body(
+                BaseResponse.error("자동차 경로 조회 중 오류가 발생했습니다.")
+            );
+        }
+    }
+    
+    /**
+     * 대중교통 경로 조회 (추정)
+     */
+    @GetMapping("/public-transport-route")
+    public ResponseEntity<BaseResponse<RealTimeRouteResponse>> getPublicTransportRoute(
+            @RequestParam Double originLatitude,
+            @RequestParam Double originLongitude,
+            @RequestParam Double destLatitude,
+            @RequestParam Double destLongitude,
+            @RequestParam(required = false) String originAddress) {
+        
+        log.info("🚌 대중교통 경로 요청 - ({}, {}) -> ({}, {})", 
+                originLatitude, originLongitude, destLatitude, destLongitude);
+        
+        try {
+            LocationRequest origin = LocationRequest.builder()
+                    .latitude(originLatitude)
+                    .longitude(originLongitude)
+                    .address(originAddress != null ? originAddress : "출발지")
+                    .build();
+                    
+            RealTimeRouteResponse route = realTimeTrafficService.calculateRealTimeRoute(
+                    origin, destLatitude, destLongitude, TransportationType.PUBLIC_TRANSPORT);
+            
+            return ResponseEntity.ok(
+                BaseResponse.success(
+                    route,
+                    String.format("대중교통 예상 경로: %s, 예상요금: %s", 
+                            route.getFormattedDuration(), route.getFormattedFare())
+                )
+            );
+            
+        } catch (Exception e) {
+            log.error("❌ 대중교통 경로 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError().body(
+                BaseResponse.error("대중교통 경로 조회 중 오류가 발생했습니다.")
+            );
+        }
+    }
+    
+    /**
+     * 도보 경로 조회
+     */
+    @GetMapping("/walking-route")
+    public ResponseEntity<BaseResponse<RealTimeRouteResponse>> getWalkingRoute(
+            @RequestParam Double originLatitude,
+            @RequestParam Double originLongitude,
+            @RequestParam Double destLatitude,
+            @RequestParam Double destLongitude,
+            @RequestParam(required = false) String originAddress) {
+        
+        log.info("🚶 도보 경로 요청 - ({}, {}) -> ({}, {})", 
+                originLatitude, originLongitude, destLatitude, destLongitude);
+        
+        try {
+            LocationRequest origin = LocationRequest.builder()
+                    .latitude(originLatitude)
+                    .longitude(originLongitude)
+                    .address(originAddress != null ? originAddress : "출발지")
+                    .build();
+                    
+            RealTimeRouteResponse route = realTimeTrafficService.calculateRealTimeRoute(
+                    origin, destLatitude, destLongitude, TransportationType.WALK);
+            
+            return ResponseEntity.ok(
+                BaseResponse.success(
+                    route,
+                    String.format("도보 경로: %s, 거리: %.1fkm", 
+                            route.getFormattedDuration(), route.getDistanceInKm())
+                )
+            );
+            
+        } catch (Exception e) {
+            log.error("❌ 도보 경로 조회 중 오류 발생", e);
+            return ResponseEntity.internalServerError().body(
+                BaseResponse.error("도보 경로 조회 중 오류가 발생했습니다.")
+            );
+        }
+    }
+    
+    /**
+     * 교통수단별 평균 이동시간 계산
+     */
+    @PostMapping("/average-time")
+    public ResponseEntity<BaseResponse<Double>> calculateAverageTime(
+            @RequestBody List<LocationRequest> origins,
+            @RequestParam Double destLatitude,
+            @RequestParam Double destLongitude,
+            @RequestParam TransportationType transportation) {
+        
+        log.info("📊 평균 이동시간 계산 요청 - 교통수단: {}, 출발지: {}개", 
+                transportation, origins.size());
+        
+        try {
+            Double averageTime = realTimeTrafficService.calculateAverageRealTimeTravelTime(
+                    origins, destLatitude, destLongitude, transportation);
+            
+            return ResponseEntity.ok(
+                BaseResponse.success(
+                    averageTime,
+                    String.format("%s 평균 이동시간: %.1f분", 
+                            transportation.getDescription(), averageTime)
+                )
+            );
+            
+        } catch (Exception e) {
+            log.error("❌ 평균 이동시간 계산 중 오류 발생", e);
+            return ResponseEntity.internalServerError().body(
+                BaseResponse.error("평균 이동시간 계산 중 오류가 발생했습니다.")
+            );
+        }
+    }
+}

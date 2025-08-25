@@ -2,7 +2,7 @@ package com.loadmapguide_backend.domain.place.controller;
 
 import com.loadmapguide_backend.domain.place.entity.Place;
 import com.loadmapguide_backend.domain.place.service.RealTimePlaceService;
-import com.loadmapguide_backend.global.common.response.ApiResponse;
+import com.loadmapguide_backend.global.common.dto.BaseResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,7 +22,7 @@ public class RealTimePlaceController {
      * 특정 위치 주변의 실시간 장소 정보 조회
      */
     @GetMapping("/around")
-    public ResponseEntity<ApiResponse<List<Place>>> getRealTimePlacesAround(
+    public ResponseEntity<BaseResponse<List<Place>>> getRealTimePlacesAround(
             @RequestParam Double latitude,
             @RequestParam Double longitude,
             @RequestParam(defaultValue = "1000") Integer radius) {
@@ -33,7 +33,7 @@ public class RealTimePlaceController {
             List<Place> places = realTimePlaceService.getRealTimePlacesAround(latitude, longitude, radius);
             
             return ResponseEntity.ok(
-                ApiResponse.success(
+                BaseResponse.success(
                     places,
                     String.format("주변 %dm 내 %d개의 장소를 찾았습니다.", radius, places.size())
                 )
@@ -42,7 +42,7 @@ public class RealTimePlaceController {
         } catch (Exception e) {
             log.error("❌ 실시간 장소 조회 중 오류 발생", e);
             return ResponseEntity.internalServerError().body(
-                ApiResponse.error("실시간 장소 정보 조회 중 오류가 발생했습니다.")
+                BaseResponse.error("실시간 장소 정보 조회 중 오류가 발생했습니다.")
             );
         }
     }
@@ -51,7 +51,7 @@ public class RealTimePlaceController {
      * 키워드 기반 실시간 장소 검색
      */
     @GetMapping("/search")
-    public ResponseEntity<ApiResponse<List<Place>>> searchRealTimePlaces(
+    public ResponseEntity<BaseResponse<List<Place>>> searchRealTimePlaces(
             @RequestParam String keyword,
             @RequestParam Double latitude,
             @RequestParam Double longitude,
@@ -63,7 +63,7 @@ public class RealTimePlaceController {
             List<Place> places = realTimePlaceService.searchRealTimePlaces(keyword, latitude, longitude, radius);
             
             return ResponseEntity.ok(
-                ApiResponse.success(
+                BaseResponse.success(
                     places,
                     String.format("'%s' 검색 결과 %d개의 장소를 찾았습니다.", keyword, places.size())
                 )
@@ -72,7 +72,7 @@ public class RealTimePlaceController {
         } catch (Exception e) {
             log.error("❌ 키워드 검색 중 오류 발생", e);
             return ResponseEntity.internalServerError().body(
-                ApiResponse.error("장소 검색 중 오류가 발생했습니다.")
+                BaseResponse.error("장소 검색 중 오류가 발생했습니다.")
             );
         }
     }
@@ -81,7 +81,7 @@ public class RealTimePlaceController {
      * 카테고리별 실시간 장소 검색
      */
     @GetMapping("/category/{categoryCode}")
-    public ResponseEntity<ApiResponse<List<Place>>> searchPlacesByCategory(
+    public ResponseEntity<BaseResponse<List<Place>>> searchPlacesByCategory(
             @PathVariable String categoryCode,
             @RequestParam Double latitude,
             @RequestParam Double longitude,
@@ -93,7 +93,7 @@ public class RealTimePlaceController {
             List<Place> places = realTimePlaceService.searchRealTimePlacesByCategory(categoryCode, latitude, longitude, radius);
             
             return ResponseEntity.ok(
-                ApiResponse.success(
+                BaseResponse.success(
                     places,
                     String.format("카테고리 '%s' 검색 결과 %d개의 장소를 찾았습니다.", categoryCode, places.size())
                 )
@@ -102,7 +102,7 @@ public class RealTimePlaceController {
         } catch (Exception e) {
             log.error("❌ 카테고리 검색 중 오류 발생", e);
             return ResponseEntity.internalServerError().body(
-                ApiResponse.error("카테고리별 장소 검색 중 오류가 발생했습니다.")
+                BaseResponse.error("카테고리별 장소 검색 중 오류가 발생했습니다.")
             );
         }
     }
@@ -111,7 +111,7 @@ public class RealTimePlaceController {
      * 카페 전용 검색 (카공하기 좋은 카페 위주)
      */
     @GetMapping("/cafes")
-    public ResponseEntity<ApiResponse<List<Place>>> searchCafesForWork(
+    public ResponseEntity<BaseResponse<List<Place>>> searchCafesForWork(
             @RequestParam Double latitude,
             @RequestParam Double longitude,
             @RequestParam(defaultValue = "1000") Integer radius) {
@@ -127,7 +127,7 @@ public class RealTimePlaceController {
             studyCafes.addAll(cafes);
             
             return ResponseEntity.ok(
-                ApiResponse.success(
+                BaseResponse.success(
                     studyCafes,
                     String.format("카공하기 좋은 카페 %d개를 찾았습니다.", studyCafes.size())
                 )
@@ -136,7 +136,7 @@ public class RealTimePlaceController {
         } catch (Exception e) {
             log.error("❌ 카페 검색 중 오류 발생", e);
             return ResponseEntity.internalServerError().body(
-                ApiResponse.error("카페 검색 중 오류가 발생했습니다.")
+                BaseResponse.error("카페 검색 중 오류가 발생했습니다.")
             );
         }
     }
@@ -145,7 +145,7 @@ public class RealTimePlaceController {
      * 맛집 검색 (모임하기 좋은 식당 위주)
      */
     @GetMapping("/restaurants")
-    public ResponseEntity<ApiResponse<List<Place>>> searchRestaurantsForMeeting(
+    public ResponseEntity<BaseResponse<List<Place>>> searchRestaurantsForMeeting(
             @RequestParam Double latitude,
             @RequestParam Double longitude,
             @RequestParam(defaultValue = "1500") Integer radius) {
@@ -156,7 +156,7 @@ public class RealTimePlaceController {
             List<Place> restaurants = realTimePlaceService.searchRealTimePlacesByCategory("FD6", latitude, longitude, radius);
             
             return ResponseEntity.ok(
-                ApiResponse.success(
+                BaseResponse.success(
                     restaurants,
                     String.format("모임하기 좋은 맛집 %d개를 찾았습니다.", restaurants.size())
                 )
@@ -165,7 +165,7 @@ public class RealTimePlaceController {
         } catch (Exception e) {
             log.error("❌ 맛집 검색 중 오류 발생", e);
             return ResponseEntity.internalServerError().body(
-                ApiResponse.error("맛집 검색 중 오류가 발생했습니다.")
+                BaseResponse.error("맛집 검색 중 오류가 발생했습니다.")
             );
         }
     }
@@ -174,7 +174,7 @@ public class RealTimePlaceController {
      * 놀거리/엔터테인먼트 검색
      */
     @GetMapping("/entertainment")
-    public ResponseEntity<ApiResponse<List<Place>>> searchEntertainment(
+    public ResponseEntity<BaseResponse<List<Place>>> searchEntertainment(
             @RequestParam Double latitude,
             @RequestParam Double longitude,
             @RequestParam(defaultValue = "2000") Integer radius) {
@@ -194,7 +194,7 @@ public class RealTimePlaceController {
             entertainment.addAll(cinema);
             
             return ResponseEntity.ok(
-                ApiResponse.success(
+                BaseResponse.success(
                     entertainment,
                     String.format("놀거리 %d개를 찾았습니다.", entertainment.size())
                 )
@@ -203,7 +203,7 @@ public class RealTimePlaceController {
         } catch (Exception e) {
             log.error("❌ 놀거리 검색 중 오류 발생", e);
             return ResponseEntity.internalServerError().body(
-                ApiResponse.error("놀거리 검색 중 오류가 발생했습니다.")
+                BaseResponse.error("놀거리 검색 중 오류가 발생했습니다.")
             );
         }
     }

@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.client.RestTemplate;
 
 import jakarta.annotation.PostConstruct;
 
@@ -75,5 +76,13 @@ public class ExternalApiConfig {
                 .defaultHeader("Content-Type", "application/json")
                 .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(1024 * 1024))
                 .build();
+    }
+    
+    /**
+     * OpenAI API용 RestTemplate (간단한 설정)
+     */
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
     }
 }

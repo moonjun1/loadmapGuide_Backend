@@ -2,6 +2,7 @@ package com.loadmapguide_backend.domain.place.entity;
 
 import com.loadmapguide_backend.global.common.entity.BaseEntity;
 import com.loadmapguide_backend.global.common.enums.PlaceCategory;
+import com.loadmapguide_backend.global.common.enums.PlaceTag;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -9,6 +10,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+
+import java.util.Set;
 
 @Entity
 @Table(name = "places")
@@ -62,12 +65,21 @@ public class Place extends BaseEntity {
     @Column(name = "place_url", length = 500)
     private String placeUrl;
     
+    @ElementCollection(targetClass = PlaceTag.class, fetch = FetchType.LAZY)
+    @Enumerated(EnumType.STRING)
+    @CollectionTable(
+        name = "place_tags", 
+        joinColumns = @JoinColumn(name = "place_id")
+    )
+    @Column(name = "tag")
+    private Set<PlaceTag> tags;
+    
     @Builder
     public Place(String kakaoPlaceId, String name, PlaceCategory category,
                 String address, String roadAddress, Double latitude, Double longitude,
                 String phone, Double rating, Integer priceRange,
                 BusinessHours businessHours, PlaceAdditionalInfo additionalInfo,
-                String placeUrl) {
+                String placeUrl, Set<PlaceTag> tags) {
         this.kakaoPlaceId = kakaoPlaceId;
         this.name = name;
         this.category = category;
@@ -81,6 +93,33 @@ public class Place extends BaseEntity {
         this.businessHours = businessHours;
         this.additionalInfo = additionalInfo;
         this.placeUrl = placeUrl;
+        this.tags = tags;
+    }
+    
+    /**
+     * 태그 추가
+     */
+    public void addTag(PlaceTag tag) {
+        if (this.tags == null) {
+            this.tags = new java.util.HashSet<>();
+        }
+        this.tags.add(tag);
+    }
+    
+    /**
+     * 태그 제거
+     */
+    public void removeTag(PlaceTag tag) {
+        if (this.tags != null) {
+            this.tags.remove(tag);
+        }
+    }
+    
+    /**
+     * 특정 태그가 있는지 확인
+     */
+    public boolean hasTag(PlaceTag tag) {
+        return this.tags != null && this.tags.contains(tag);
     }
     
     public void updateRating(Double rating) {

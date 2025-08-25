@@ -211,9 +211,11 @@ public class MiddlePointCalculator {
                     
                     // 교통수단별 평균 속도로 시간 계산 (분 단위)
                     double speed = switch (transportationType) {
-                        case PUBLIC_TRANSPORT -> 25.0; // km/h
-                        case CAR -> 35.0;
-                        case WALK -> 5.0;
+                        case CAR -> 35.0; // km/h (서울 시내 평균)
+                        case SUBWAY -> 40.0; // km/h (지하철 평균 속도, 환승시간 포함)
+                        case BUS -> 20.0; // km/h (버스 평균 속도, 정류장 대기시간 포함)
+                        case PUBLIC_TRANSPORT -> 25.0; // km/h (지하철+버스 혼용)
+                        case WALK -> 5.0; // km/h (도보 평균)
                     };
                     
                     return (distance / 1000.0) / speed * 60; // 분 단위

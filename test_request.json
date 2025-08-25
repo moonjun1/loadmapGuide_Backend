@@ -1,0 +1,20 @@
+[
+  {
+    "address": "서울특별시 강남구 역삼동",
+    "latitude": 37.5001,
+    "longitude": 127.0374,
+    "participantName": "김철수"
+  },
+  {
+    "address": "서울특별시 마포구 홍대입구",
+    "latitude": 37.5563,
+    "longitude": 126.9236,
+    "participantName": "이영희"
+  },
+  {
+    "address": "서울특별시 중구 명동",
+    "latitude": 37.5636,
+    "longitude": 126.9834,
+    "participantName": "박민수"
+  }
+]

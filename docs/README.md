@@ -1,6 +1,9 @@
 # LoadMapGuide Backend 개발 문서
 
 ## 📋 프로젝트 개요
+<img width="1400" height="921" alt="스크린샷 2025-08-24 232842" src="https://github.com/user-attachments/assets/cf430d78-e2c0-438a-9414-01851a5a2a48" />
+<img width="669" height="837" alt="스크린샷 2025-08-24 232848" src="https://github.com/user-attachments/assets/ee8b2246-fde0-4aaf-aef3-53863df5aa05" />
+<img width="777" height="786" alt="스크린샷 2025-08-25 133216" src="https://github.com/user-attachments/assets/d6cabb6c-cc06-4b5b-8f0d-cecfd4209a75" />
 
 **중간지점 만남 서비스**의 백엔드 API 서버입니다. 여러 명이 만날 때 모두에게 공평한 중간지점을 찾고, 목적에 맞는 장소를 추천해주는 서비스입니다.
 
